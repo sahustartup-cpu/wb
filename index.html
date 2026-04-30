@@ -19,8 +19,11 @@
   </style>
 </head>
 <body>
-  <div id="status">Loading SDK...</div>
+  <div id="status">Loading...</div>
   <div id="app"></div>
+
+  <!-- SDK bundled locally — no CDN needed -->
+  <script src="white-web-sdk.js"></script>
   <script>
     function setStatus(msg, color) {
       var el = document.getElementById('status');
@@ -29,58 +32,40 @@
       if (color) el.style.color = color;
     }
 
-    function initWB() {
-      if (typeof WhiteWebSdk === 'undefined') {
-        setStatus('SDK not available.', 'red');
-        return;
+    if (typeof WhiteWebSdk === 'undefined') {
+      setStatus('SDK missing. Upload sdk.js to GitHub.', 'red');
+    } else {
+      var params = new URLSearchParams(window.location.search);
+      var uuid   = params.get('uuid');
+      var token  = params.get('token');
+      var region = params.get('region') || 'us-sv';
+      var appId  = '_NclsByREfG80ZkgOErgQw/qnwZvcHJypTHCw';
+
+      if (!uuid || !token) {
+        setStatus('Missing room info.', 'red');
+      } else {
+        setStatus('Joining...');
+        var sdk = new WhiteWebSdk({ appIdentifier: appId, region: region });
+        sdk.joinRoom({
+          uuid: uuid, roomToken: token,
+          isWritable: false,
+          uid: 'stu-' + Date.now(),
+          region: region, floatBar: false,
+        }, {
+          onPhaseChanged: function(phase) {
+            setStatus(phase);
+            if (phase === 'connected') {
+              document.getElementById('status').style.display = 'none';
+            }
+          },
+        }).then(function(room) {
+          document.getElementById('status').style.display = 'none';
+          room.bindHtmlElement(document.getElementById('app'));
+        }).catch(function(err) {
+          setStatus('Error: ' + (err.message || err), 'red');
+        });
       }
-      var params   = new URLSearchParams(window.location.search);
-      var uuid     = params.get('uuid');
-      var token    = params.get('token');
-      var region   = params.get('region') || 'us-sv';
-      var appId    = '_NclsByREfG80ZkgOErgQw/qnwZvcHJypTHCw';
-
-      if (!uuid || !token) { setStatus('Missing room info.', 'red'); return; }
-
-      setStatus('Joining...');
-      var sdk = new WhiteWebSdk({ appIdentifier: appId, region: region });
-      sdk.joinRoom({
-        uuid: uuid, roomToken: token,
-        isWritable: false,
-        uid: 'stu-' + Date.now(),
-        region: region, floatBar: false,
-      }, {
-        onPhaseChanged: function(phase) {
-          setStatus(phase);
-          if (phase === 'connected') {
-            document.getElementById('status').style.display = 'none';
-          }
-        },
-      }).then(function(room) {
-        document.getElementById('status').style.display = 'none';
-        room.bindHtmlElement(document.getElementById('app'));
-      }).catch(function(err) {
-        setStatus('Error: ' + (err.message || err), 'red');
-      });
     }
-
-    // Try Netless own CDN first, then fallbacks
-    var loaded = false;
-    function trySDK(urls, i) {
-      if (i >= urls.length) { setStatus('All CDNs failed.', 'red'); return; }
-      var s = document.createElement('script');
-      s.src = urls[i];
-      s.onload = function() {
-        if (!loaded) { loaded = true; initWB(); }
-      };
-      s.onerror = function() { trySDK(urls, i+1); };
-      document.head.appendChild(s);
-    }
-    trySDK([
-      'https://sdk.herewhite.com/white-web-sdk/2.16.42.js',
-      'https://cdn.jsdelivr.net/npm/@netless/white-web-sdk@2.16.42/dist/white-web-sdk.js',
-      'https://unpkg.com/@netless/white-web-sdk@2.16.42/dist/white-web-sdk.js',
-    ], 0);
   </script>
 </body>
 </html>
