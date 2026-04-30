@@ -21,66 +21,66 @@
 <body>
   <div id="status">Loading SDK...</div>
   <div id="app"></div>
-
-  <!-- Load SDK first, then run init -->
   <script>
     function setStatus(msg, color) {
       var el = document.getElementById('status');
       el.innerText = msg;
+      el.style.display = 'block';
       if (color) el.style.color = color;
     }
 
     function initWB() {
       if (typeof WhiteWebSdk === 'undefined') {
-        setStatus('SDK not loaded. Please check internet.', 'red');
+        setStatus('SDK not available.', 'red');
         return;
       }
-
       var params   = new URLSearchParams(window.location.search);
       var uuid     = params.get('uuid');
       var token    = params.get('token');
       var region   = params.get('region') || 'us-sv';
       var appId    = '_NclsByREfG80ZkgOErgQw/qnwZvcHJypTHCw';
 
-      if (!uuid || !token) {
-        setStatus('Missing room info.', 'red');
-        return;
-      }
+      if (!uuid || !token) { setStatus('Missing room info.', 'red'); return; }
 
-      setStatus('Joining room...');
+      setStatus('Joining...');
       var sdk = new WhiteWebSdk({ appIdentifier: appId, region: region });
-
       sdk.joinRoom({
-        uuid:       uuid,
-        roomToken:  token,
+        uuid: uuid, roomToken: token,
         isWritable: false,
-        uid:        'stu-' + Date.now(),
-        region:     region,
-        floatBar:   false,
+        uid: 'stu-' + Date.now(),
+        region: region, floatBar: false,
       }, {
         onPhaseChanged: function(phase) {
-          setStatus('Phase: ' + phase);
+          setStatus(phase);
           if (phase === 'connected') {
             document.getElementById('status').style.display = 'none';
           }
-        },
-        onDisconnectWithError: function(err) {
-          setStatus('Disconnected: ' + err, 'red');
         },
       }).then(function(room) {
         document.getElementById('status').style.display = 'none';
         room.bindHtmlElement(document.getElementById('app'));
       }).catch(function(err) {
-        setStatus('Error: ' + (err.message || JSON.stringify(err)), 'red');
+        setStatus('Error: ' + (err.message || err), 'red');
       });
     }
-  </script>
 
-  <!-- SDK loads last — onload calls initWB -->
-  <script
-    src="https://cdn.jsdelivr.net/npm/@netless/white-web-sdk/dist/white-web-sdk.js"
-    onload="initWB()"
-    onerror="setStatus('CDN failed. No internet?', 'red')">
+    // Try Netless own CDN first, then fallbacks
+    var loaded = false;
+    function trySDK(urls, i) {
+      if (i >= urls.length) { setStatus('All CDNs failed.', 'red'); return; }
+      var s = document.createElement('script');
+      s.src = urls[i];
+      s.onload = function() {
+        if (!loaded) { loaded = true; initWB(); }
+      };
+      s.onerror = function() { trySDK(urls, i+1); };
+      document.head.appendChild(s);
+    }
+    trySDK([
+      'https://sdk.herewhite.com/white-web-sdk/2.16.42.js',
+      'https://cdn.jsdelivr.net/npm/@netless/white-web-sdk@2.16.42/dist/white-web-sdk.js',
+      'https://unpkg.com/@netless/white-web-sdk@2.16.42/dist/white-web-sdk.js',
+    ], 0);
   </script>
 </body>
 </html>
