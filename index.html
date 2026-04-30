@@ -21,8 +21,6 @@
 <body>
   <div id="status">Loading...</div>
   <div id="app"></div>
-
-  <!-- SDK bundled locally — no CDN needed -->
   <script src="white-web-sdk.js"></script>
   <script>
     function setStatus(msg, color) {
@@ -33,7 +31,7 @@
     }
 
     if (typeof WhiteWebSdk === 'undefined') {
-      setStatus('SDK missing. Upload sdk.js to GitHub.', 'red');
+      setStatus('SDK missing.', 'red');
     } else {
       var params = new URLSearchParams(window.location.search);
       var uuid   = params.get('uuid');
@@ -45,12 +43,18 @@
         setStatus('Missing room info.', 'red');
       } else {
         setStatus('Joining...');
-        var sdk = new WhiteWebSdk({ appIdentifier: appId, region: region });
+        var sdk = new WhiteWebSdk({
+          appIdentifier: appId,
+          region: region,
+          deviceType: 'touch',
+        });
         sdk.joinRoom({
-          uuid: uuid, roomToken: token,
+          uuid: uuid,
+          roomToken: token,
           isWritable: false,
           uid: 'stu-' + Date.now(),
-          region: region, floatBar: false,
+          region: region,
+          floatBar: false,
         }, {
           onPhaseChanged: function(phase) {
             setStatus(phase);
