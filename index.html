@@ -19,42 +19,68 @@
   </style>
 </head>
 <body>
-  <div id="status">Connecting to whiteboard...</div>
+  <div id="status">Loading SDK...</div>
   <div id="app"></div>
-  <script src="https://cdn.jsdelivr.net/npm/@netless/white-web-sdk/dist/white-web-sdk.js"></script>
-  <script>
-    var params = new URLSearchParams(window.location.search);
-    var uuid      = params.get('uuid');
-    var roomToken = params.get('token');
-    var appId     = params.get('appId') || '_NclsByREfG80ZkgOErgQw/qnwZvcHJypTHCw';
-    var region    = params.get('region') || 'us-sv';
 
-    if (!uuid || !roomToken) {
-      document.getElementById('status').innerText = 'Missing room info.';
-    } else {
+  <!-- Load SDK first, then run init -->
+  <script>
+    function setStatus(msg, color) {
+      var el = document.getElementById('status');
+      el.innerText = msg;
+      if (color) el.style.color = color;
+    }
+
+    function initWB() {
+      if (typeof WhiteWebSdk === 'undefined') {
+        setStatus('SDK not loaded. Please check internet.', 'red');
+        return;
+      }
+
+      var params   = new URLSearchParams(window.location.search);
+      var uuid     = params.get('uuid');
+      var token    = params.get('token');
+      var region   = params.get('region') || 'us-sv';
+      var appId    = '_NclsByREfG80ZkgOErgQw/qnwZvcHJypTHCw';
+
+      if (!uuid || !token) {
+        setStatus('Missing room info.', 'red');
+        return;
+      }
+
+      setStatus('Joining room...');
       var sdk = new WhiteWebSdk({ appIdentifier: appId, region: region });
+
       sdk.joinRoom({
         uuid:       uuid,
-        roomToken:  roomToken,
+        roomToken:  token,
         isWritable: false,
         uid:        'stu-' + Date.now(),
         region:     region,
         floatBar:   false,
       }, {
         onPhaseChanged: function(phase) {
-          document.getElementById('status').innerText = phase;
+          setStatus('Phase: ' + phase);
           if (phase === 'connected') {
             document.getElementById('status').style.display = 'none';
           }
+        },
+        onDisconnectWithError: function(err) {
+          setStatus('Disconnected: ' + err, 'red');
         },
       }).then(function(room) {
         document.getElementById('status').style.display = 'none';
         room.bindHtmlElement(document.getElementById('app'));
       }).catch(function(err) {
-        document.getElementById('status').innerText = 'Error: ' + (err.message || err);
-        document.getElementById('status').style.color = 'red';
+        setStatus('Error: ' + (err.message || JSON.stringify(err)), 'red');
       });
     }
+  </script>
+
+  <!-- SDK loads last — onload calls initWB -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/@netless/white-web-sdk/dist/white-web-sdk.js"
+    onload="initWB()"
+    onerror="setStatus('CDN failed. No internet?', 'red')">
   </script>
 </body>
 </html>
